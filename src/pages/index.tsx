@@ -58,7 +58,7 @@ export default function Dashboard() {
   if (loading) return (
     <div style={{ background: '#0a0f0a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🦷</div>
+        <div style={{ fontSize: 48, marginBottom: 16 }}></div>
         <div style={{ fontFamily: 'Syne, sans-serif', color: '#22c55e', fontSize: 18 }}>Cargando Domra Dashboard...</div>
       </div>
     </div>
