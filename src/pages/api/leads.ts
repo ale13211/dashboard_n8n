@@ -33,39 +33,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
 
+  // DEBUG
+  if (req.query.debug === '1') {
+    return res.status(200).json({
+      url: process.env.UPSTASH_REDIS_REST_URL || 'NO_URL',
+      token: process.env.UPSTASH_REDIS_REST_TOKEN ? 'TOKEN_OK' : 'NO_TOKEN'
+    })
+  }
+
   if (req.method === 'POST') {
     const { from, nombre, telefono, ciudad, zona, paso, cantidad, canal, nota } = req.body
     if (!from) return res.status(400).json({ error: 'from requerido' })
-
     const estado =
       paso === 'pedido_confirmado' ? 'cerrado' :
       (paso === 'espera_comprobante' || paso === 'espera_comprobante_flash') ? 'por_cerrar' :
       (paso === 'espera_datos_central' || paso === 'espera_datos_interior') ? 'en_proceso' :
       paso === 'recontacto_enviado' ? 'por_cerrar' : 'lead'
-
     const cant = Number(cantidad) || 0
     const leads = await getLeads()
     const existing = leads.findIndex((l: any) => l.from === from)
-
     const lead = {
       id:       existing >= 0 ? leads[existing].id : String(Date.now()),
-      from,
-      nombre:   nombre   || 'Sin nombre',
-      telefono: telefono || '',
-      ciudad:   ciudad   || 'Sin ciudad',
-      zona:     zona     || 'Interior',
-      paso,
-      cantidad: cant,
-      monto:    cant * 139000,
-      fecha:    new Date().toISOString().split('T')[0],
-      canal:    canal || 'WhatsApp',
-      estado,
-      nota:     nota || (existing >= 0 ? leads[existing].nota : ''),
+      from, nombre: nombre || 'Sin nombre', telefono: telefono || '',
+      ciudad: ciudad || 'Sin ciudad', zona: zona || 'Interior',
+      paso, cantidad: cant, monto: cant * 139000,
+      fecha: new Date().toISOString().split('T')[0],
+      canal: canal || 'WhatsApp', estado,
+      nota: nota || (existing >= 0 ? leads[existing].nota : ''),
     }
-
     if (existing >= 0) leads[existing] = lead
     else leads.push(lead)
-
     await saveLeads(leads)
     return res.status(200).json({ ok: true, lead })
   }
