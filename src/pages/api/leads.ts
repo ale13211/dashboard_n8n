@@ -14,17 +14,17 @@ async function redisCmd(args: any[]): Promise<any> {
     body: JSON.stringify(args),
   })
   const json = await r.json()
-  return json.result
+  return json
 }
 
 async function getLeads(): Promise<any[]> {
-  const result = await redisCmd(['GET', LEADS_KEY])
-  if (!result) return []
-  try { return JSON.parse(result) } catch { return [] }
+  const json = await redisCmd(['GET', LEADS_KEY])
+  if (!json.result) return []
+  try { return JSON.parse(json.result) } catch { return [] }
 }
 
-async function saveLeads(leads: any[]): Promise<void> {
-  await redisCmd(['SET', LEADS_KEY, JSON.stringify(leads)])
+async function saveLeads(leads: any[]): Promise<any> {
+  return await redisCmd(['SET', LEADS_KEY, JSON.stringify(leads)])
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -33,12 +33,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
 
-  // DEBUG
   if (req.query.debug === '1') {
     return res.status(200).json({
       url: process.env.UPSTASH_REDIS_REST_URL || 'NO_URL',
       token: process.env.UPSTASH_REDIS_REST_TOKEN ? 'TOKEN_OK' : 'NO_TOKEN'
     })
+  }
+
+  if (req.query.debug === '2') {
+    const setResult = await redisCmd(['SET', 'debug:test', 'funciona'])
+    const getResult = await redisCmd(['GET', 'debug:test'])
+    return res.status(200).json({ setResult, getResult })
   }
 
   if (req.method === 'POST') {
@@ -63,8 +68,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (existing >= 0) leads[existing] = lead
     else leads.push(lead)
-    await saveLeads(leads)
-    return res.status(200).json({ ok: true, lead })
+    const saveResult = await saveLeads(leads)
+    return res.status(200).json({ ok: true, lead, saveResult })
   }
 
   if (req.method === 'PATCH') {
