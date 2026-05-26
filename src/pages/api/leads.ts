@@ -1,10 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-// ─── Upstash Redis (persistencia real) ───────────────────────────────────────
-// Variables de entorno requeridas en Vercel:
-//   UPSTASH_REDIS_REST_URL
-//   UPSTASH_REDIS_REST_TOKEN
-
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL!
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN!
 const LEADS_KEY   = 'domra:leads'
@@ -15,37 +10,32 @@ async function redisGet(key: string): Promise<any> {
   })
   const json = await r.json()
   if (!json.result) return null
-  return JSON.parse(json.result)
+  try { return JSON.parse(json.result) } catch { return null }
 }
 
 async function redisSet(key: string, value: any): Promise<void> {
-  await fetch(`${REDIS_URL}/set/${key}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${REDIS_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ value: JSON.stringify(value) }),
+  const encoded = encodeURIComponent(JSON.stringify(value))
+  await fetch(`${REDIS_URL}/set/${key}/${encoded}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
   })
 }
 
 async function getLeads(): Promise<any[]> {
   const data = await redisGet(LEADS_KEY)
-  return data ?? []
+  return Array.isArray(data) ? data : []
 }
 
 async function saveLeads(leads: any[]): Promise<void> {
   await redisSet(LEADS_KEY, leads)
 }
 
-// ─── Handler ──────────────────────────────────────────────────────────────────
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
 
-  // ── POST: n8n manda un lead/actualización ──────────────────────────────────
   if (req.method === 'POST') {
     const { from, nombre, telefono, ciudad, zona, paso, cantidad, canal, nota } = req.body
     if (!from) return res.status(400).json({ error: 'from requerido' })
@@ -83,7 +73,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ ok: true, lead })
   }
 
-  // ── PATCH: editar nota o estado desde el dashboard ─────────────────────────
   if (req.method === 'PATCH') {
     const { id, nota, estado } = req.body
     const leads = await getLeads()
@@ -95,13 +84,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ ok: true, lead: leads[idx] })
   }
 
-  // ── GET: métricas y lista completa para el dashboard ──────────────────────
   if (req.method === 'GET') {
     const leads = await getLeads()
 
-    const cerrados   = leads.filter((l: any) => l.estado === 'cerrado')
-    const porCerrar  = leads.filter((l: any) => l.estado === 'por_cerrar')
-    const enProceso  = leads.filter((l: any) => l.estado === 'en_proceso')
+    const cerrados    = leads.filter((l: any) => l.estado === 'cerrado')
+    const porCerrar   = leads.filter((l: any) => l.estado === 'por_cerrar')
+    const enProceso   = leads.filter((l: any) => l.estado === 'en_proceso')
     const leadsNuevos = leads.filter((l: any) => l.estado === 'lead')
 
     const totalMonto    = cerrados.reduce((s: number, l: any) => s + l.monto, 0)
