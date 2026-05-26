@@ -72,7 +72,7 @@ export default function Dashboard() {
       {/* HEADER */}
       <div style={{ borderBottom: '1px solid #1a2e1a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d150d' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 28 }}>🦷</span>
+          <span style={{ fontSize: 28 }}></span>
           <div>
             <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: '#22c55e', letterSpacing: '-0.5px' }}>DOMRA</div>
             <div style={{ fontSize: 11, color: '#4ade80', letterSpacing: '3px', marginTop: -2 }}>DASHBOARD</div>
